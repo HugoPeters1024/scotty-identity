@@ -8,7 +8,6 @@ module Web.Scotty.Identity (
    , getPassword
    , IsSession
    , getIdentifier
-   , getCreated
    , configureAuth) where
 
 import Control.Monad (liftM)
@@ -22,18 +21,17 @@ import qualified Data.ByteString as BT
 import Data.UUID
 import Data.Time
 
-
-
 type Username = T.Text
 type Password = BT.ByteString
 
+-- | Typeclass that requires a getter for a Username and Password
 class IsUser a where
   getUsername :: a -> Username
   getPassword :: a -> Password
 
+-- | Typeclass that requires a getter for an identifier 
 class IsSession a where
   getIdentifier :: a -> UUID
-  getCreated    :: a -> UTCTime
 
 type GetSession b      = UUID -> IO (Maybe b)
 type SessionToUser b a = b -> IO (Maybe a)
@@ -42,6 +40,8 @@ type CreateSession a b = a -> IO b
 type HashFunction      = BT.ByteString -> BT.ByteString
 
 
+-- | Configure authentication, returns a series of items and function that can be used
+--   to control protected routes and login / logout logic
 configureAuth :: (IsUser a, IsSession b) =>
                  GetSession b
               -> SessionToUser b a
@@ -55,7 +55,7 @@ configureAuth :: (IsUser a, IsSession b) =>
 configureAuth getSession sessionToUser retrieveUser makeSession hash = 
     (_makeAuth, _makeAuthM, _postLogin, _logout)
     where
-      _makeAuth = makeAuth getSession sessionToUser
+      _makeAuth  = makeAuth getSession sessionToUser
       _makeAuthM = makeAuthM getSession sessionToUser
       _postLogin = postLogin retrieveUser makeSession hash
       _logout    = removeLoginCookie
